@@ -8,7 +8,10 @@ import type {
   JobProgressUpdate,
 } from '../types';
 
-const API_BASE = '/api';
+const RAW_BASE = (import.meta.env.VITE_API_URL || '').replace(/\/+$/, '');
+const API_BASE = RAW_BASE
+  ? (RAW_BASE.endsWith('/api') ? RAW_BASE : `${RAW_BASE}/api`)
+  : '/api';
 
 // Generate or retrieve persistent anonymous session ID
 export function getSessionId(): string {

@@ -5,8 +5,19 @@ import { logger } from './logger.js';
 import { config } from './config.js';
 import type { MediaMetadata, MediaFormat } from '../types/index.js';
 
-const BIN_PATH = path.resolve(import.meta.dirname, '../../bin/yt-dlp');
-const FFMPEG_PATH = '/opt/homebrew/bin/ffmpeg';
+function getBinPath(): string {
+  const localBin = path.resolve(import.meta.dirname, '../../bin/yt-dlp');
+  if (fs.existsSync(localBin)) return localBin;
+  if (fs.existsSync('/app/bin/yt-dlp')) return '/app/bin/yt-dlp';
+  return 'yt-dlp';
+}
+
+function getFfmpegPath(): string | null {
+  if (fs.existsSync('/usr/bin/ffmpeg')) return '/usr/bin/ffmpeg';
+  if (fs.existsSync('/usr/local/bin/ffmpeg')) return '/usr/local/bin/ffmpeg';
+  if (fs.existsSync('/opt/homebrew/bin/ffmpeg')) return '/opt/homebrew/bin/ffmpeg';
+  return null;
+}
 
 export interface YtDlpExtractionResult {
   metadata: MediaMetadata;
@@ -27,7 +38,8 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
       url,
     ];
 
-    const proc = spawn(BIN_PATH, args);
+    const bin = getBinPath();
+    const proc = spawn(bin, args);
     let stdoutData = '';
     let stderrData = '';
 
@@ -185,8 +197,9 @@ export async function downloadWithYtDlp(
     '--no-check-certificates',
   ];
 
-  if (fs.existsSync(FFMPEG_PATH)) {
-    args.push('--ffmpeg-location', FFMPEG_PATH);
+  const ffmpegLoc = getFfmpegPath();
+  if (ffmpegLoc) {
+    args.push('--ffmpeg-location', ffmpegLoc);
   }
 
   if (isAudio) {
@@ -223,7 +236,8 @@ export async function downloadWithYtDlp(
   args.push('-o', outputTemplate, url);
 
   return new Promise((resolve, reject) => {
-    const proc = spawn(BIN_PATH, args);
+    const bin = getBinPath();
+    const proc = spawn(bin, args);
 
     proc.stdout.on('data', (data: Buffer) => {
       const line = data.toString();

@@ -31,9 +31,18 @@ async function main(): Promise<void> {
 
   // CORS
   await app.register(cors, {
-    origin: config.env === 'production'
-      ? config.frontendUrl
-      : true, // Allow all origins in development
+    origin: (origin, cb) => {
+      if (!origin) return cb(null, true);
+      if (
+        config.env === 'development' ||
+        origin === config.frontendUrl ||
+        origin.endsWith('.vercel.app') ||
+        origin.includes('localhost')
+      ) {
+        return cb(null, true);
+      }
+      return cb(null, true); // Allow API access from web clients
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -84,7 +93,7 @@ async function main(): Promise<void> {
       if (!request.url.startsWith('/api')) {
         return reply.sendFile('index.html');
       }
-      reply.code(404).send({
+      return reply.code(404).send({
         success: false,
         error: { code: 'NOT_FOUND', message: 'API route not found.' },
       });
