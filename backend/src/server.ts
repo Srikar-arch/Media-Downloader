@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
+import fs from 'fs';
+import path from 'path';
 import { config } from './utils/config.js';
 import { logger } from './utils/logger.js';
 import { initDatabase, closeDatabase } from './db/connection.js';
@@ -67,6 +69,27 @@ async function main(): Promise<void> {
   await app.register(platformRoutes, { prefix: '/api/platforms' });
   await app.register(adminRoutes, { prefix: '/api/admin' });
   await app.register(healthRoutes, { prefix: '/api/health' });
+
+  // Serve compiled frontend in production if available
+  const publicDir = path.resolve(import.meta.dirname, '../public');
+  if (fs.existsSync(publicDir)) {
+    const fastifyStatic = (await import('@fastify/static')).default;
+    await app.register(fastifyStatic, {
+      root: publicDir,
+      prefix: '/',
+      wildcard: false,
+    });
+
+    app.setNotFoundHandler((request, reply) => {
+      if (!request.url.startsWith('/api')) {
+        return reply.sendFile('index.html');
+      }
+      reply.code(404).send({
+        success: false,
+        error: { code: 'NOT_FOUND', message: 'API route not found.' },
+      });
+    });
+  }
 
   // Cleanup scheduler
   const cleanupInterval = setInterval(() => {
