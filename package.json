@@ -1,0 +1,28 @@
+{
+  "name": "universal-media-downloader",
+  "version": "2.0.0",
+  "description": "Production-Grade Universal Media Downloader & Analyzer Web Application",
+  "private": true,
+  "scripts": {
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:backend": "cd backend && npm run build",
+    "build:frontend": "cd frontend && npm run build",
+    "build": "npm run build:backend && npm run build:frontend",
+    "test": "cd backend && npm test",
+    "typecheck": "cd backend && npm run typecheck && cd ../frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": [
+    "media-downloader",
+    "video-downloader",
+    "audio-extractor",
+    "fastify",
+    "react",
+    "vite",
+    "tailwind",
+    "ssrf-protection"
+  ],
+  "author": "",
+  "license": "MIT"
+}

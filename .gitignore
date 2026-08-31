@@ -1,0 +1,48 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production builds
+dist/
+build/
+
+# Environment variables & Secrets
+.env
+.env.local
+.env.production
+.env.development
+
+# Database & SQLite files
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+data/
+backend/data/
+
+# Downloaded Binaries & Tools
+backend/bin/
+bin/
+
+# Temporary media downloads
+temp/
+*.mp4
+*.mp3
+*.m4a
+*.webm
+*.part
+*.ytdl
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Editor & OS files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
