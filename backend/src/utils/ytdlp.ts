@@ -61,18 +61,18 @@ function getCookieFilePath(): string | null {
   _cookiePath = null;
   return null;
 }
-
 function getCommonArgs(): string[] {
+  const nodePath = process.execPath || 'node';
   const args = [
     '--no-playlist',
     '--no-warnings',
     '--no-check-certificates',
     '--force-overwrites',
     '--no-cache-dir',
-    '--socket-timeout', '15',
+    '--socket-timeout', '20',
     '--retries', '5',
     '--fragment-retries', '5',
-    '--js-runtimes', 'node',
+    '--js-runtimes', `node:${nodePath}`,
     '--user-agent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   ];
@@ -81,7 +81,7 @@ function getCommonArgs(): string[] {
   if (cookiePath) {
     args.push('--cookies', cookiePath);
   } else {
-    args.push('--extractor-args', 'youtube:player_client=android,ios;player_skip=configs,webpage');
+    args.push('--extractor-args', 'youtube:player_client=android,ios');
   }
 
   return args;
