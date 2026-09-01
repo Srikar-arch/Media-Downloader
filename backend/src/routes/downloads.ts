@@ -180,10 +180,13 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
     const stream = fs.createReadStream(job.file_path);
     const fileName = job.file_name || `download.${job.requested_format || 'mp4'}`;
 
+    const origin = (request.headers.origin as string) || '*';
     return reply
       .header('Content-Type', job.mime_type || 'application/octet-stream')
       .header('Content-Disposition', `attachment; filename="${fileName}"`)
       .header('Content-Length', job.file_size || 0)
+      .header('Access-Control-Allow-Origin', origin)
+      .header('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length')
       .send(stream);
   });
 
@@ -212,11 +215,14 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Set SSE headers
+    const origin = (request.headers.origin as string) || '*';
     reply.raw.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-cache, no-transform',
       'Connection': 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
     });
 
     // Send current status immediately

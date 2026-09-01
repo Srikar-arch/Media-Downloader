@@ -35,6 +35,10 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
       '--no-playlist',
       '--no-warnings',
       '--no-check-certificates',
+      '--user-agent',
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      '--extractor-args',
+      'youtube:player_client=android,ios,web',
       url,
     ];
 
@@ -195,6 +199,10 @@ export async function downloadWithYtDlp(
     '--no-playlist',
     '--no-warnings',
     '--no-check-certificates',
+    '--user-agent',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    '--extractor-args',
+    'youtube:player_client=android,ios,web',
   ];
 
   const ffmpegLoc = getFfmpegPath();
