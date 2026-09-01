@@ -181,6 +181,22 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
   });
 }
 
+const activeProcesses = new Map<string, any>();
+
+export function killActiveProcess(jobId: string): boolean {
+  const proc = activeProcesses.get(jobId);
+  if (proc) {
+    try {
+      proc.kill('SIGKILL');
+      activeProcesses.delete(jobId);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
+}
+
 /**
  * Download media with real-time progress callbacks.
  */
@@ -205,10 +221,17 @@ export async function downloadWithYtDlp(
     '--no-playlist',
     '--no-warnings',
     '--no-check-certificates',
+    '--no-interactive',
+    '--force-overwrites',
+    '--no-cache-dir',
+    '--socket-timeout', '30',
+    '--js-runtimes', 'node',
     '--user-agent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     '--extractor-args',
     'youtube:player_client=android,ios,web',
+    '--postprocessor-args',
+    'ffmpeg:-y',
   ];
 
   const ffmpegLoc = getFfmpegPath();
@@ -252,6 +275,18 @@ export async function downloadWithYtDlp(
   return new Promise((resolve, reject) => {
     const bin = getBinPath();
     const proc = spawn(bin, args);
+    activeProcesses.set(jobId, proc);
+
+    try {
+      proc.stdin?.end();
+    } catch {
+      // ignore
+    }
+
+    const timeout = setTimeout(() => {
+      killActiveProcess(jobId);
+      reject(new Error('Media download timed out.'));
+    }, 600000);
 
     proc.stdout.on('data', (data: Buffer) => {
       const line = data.toString();
@@ -282,6 +317,9 @@ export async function downloadWithYtDlp(
     });
 
     proc.on('close', (code) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(jobId);
+
       if (code !== 0) {
         logger.error({ code, stderr }, 'yt-dlp download failed');
         return reject(new Error(stderr || 'Download processing failed'));

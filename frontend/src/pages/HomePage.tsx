@@ -51,6 +51,12 @@ export const HomePage: React.FC = () => {
     setCurrentUrl('');
   };
 
+  const handleCancelDownload = () => {
+    cancel();
+    setIsModalOpen(false);
+    reset();
+  };
+
   return (
     <main className="min-h-screen flex flex-col items-center">
       {/* Hero Section */}
@@ -95,7 +101,7 @@ export const HomePage: React.FC = () => {
         speed={speed}
         eta={eta}
         errorMessage={errorMessage}
-        onCancel={cancel}
+        onCancel={handleCancelDownload}
         onClose={handleCloseModal}
       />
 

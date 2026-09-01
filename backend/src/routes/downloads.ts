@@ -13,7 +13,7 @@ import {
 import { providerRegistry } from '../providers/registry.js';
 import { config } from '../utils/config.js';
 import { logger } from '../utils/logger.js';
-import { downloadWithYtDlp } from '../utils/ytdlp.js';
+import { downloadWithYtDlp, killActiveProcess } from '../utils/ytdlp.js';
 import type { JobProgressUpdate } from '../types/index.js';
 
 export async function downloadRoutes(app: FastifyInstance): Promise<void> {
@@ -129,13 +129,8 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const cancelled = cancelJob(parsed.data.jobId);
-    if (!cancelled) {
-      return reply.code(400).send({
-        success: false,
-        error: { code: 'CANCEL_FAILED', message: 'Job cannot be cancelled.' },
-      });
-    }
+    killActiveProcess(parsed.data.jobId);
+    cancelJob(parsed.data.jobId);
 
     return reply.send({ success: true, message: 'Job cancelled.' });
   });

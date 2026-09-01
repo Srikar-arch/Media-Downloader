@@ -124,15 +124,14 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
             </div>
           </div>
 
-          {isTerminal && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="p-1 rounded-full text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={isTerminal ? onClose : onCancel}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer"
+            title="Close / Cancel"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Progress Bar */}
