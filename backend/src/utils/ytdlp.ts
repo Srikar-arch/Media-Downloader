@@ -81,7 +81,7 @@ function getCommonArgs(): string[] {
   if (cookiePath) {
     args.push('--cookies', cookiePath);
   } else {
-    args.push('--extractor-args', 'youtube:player_client=ios,android,mweb,web_safari');
+    args.push('--extractor-args', 'youtube:player_client=android,ios;player_skip=configs,webpage');
   }
 
   return args;
