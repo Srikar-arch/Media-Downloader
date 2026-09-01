@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { logger } from './logger.js';
@@ -19,14 +19,27 @@ function getFfmpegPath(): string | null {
   return null;
 }
 
+let _cookiePath: string | null | undefined = undefined;
+
 function getCookieFilePath(): string | null {
+  if (_cookiePath !== undefined) return _cookiePath;
+
+  // 1. Explicit file path
   if (process.env.COOKIES_FILE && fs.existsSync(process.env.COOKIES_FILE)) {
-    return process.env.COOKIES_FILE;
+    _cookiePath = process.env.COOKIES_FILE;
+    logger.info({ path: _cookiePath }, 'Using cookies from COOKIES_FILE');
+    return _cookiePath;
   }
+
+  // 2. Local data/cookies.txt
   const localCookie = path.resolve(import.meta.dirname, '../../data/cookies.txt');
   if (fs.existsSync(localCookie)) {
-    return localCookie;
+    _cookiePath = localCookie;
+    logger.info({ path: _cookiePath }, 'Using cookies from data/cookies.txt');
+    return _cookiePath;
   }
+
+  // 3. Inline env var (raw or base64-encoded)
   if (process.env.YOUTUBE_COOKIES) {
     try {
       const targetPath = path.resolve(import.meta.dirname, '../../data/cookies.txt');
@@ -37,12 +50,47 @@ function getCookieFilePath(): string | null {
         content = Buffer.from(content.replace('base64:', ''), 'base64').toString('utf-8');
       }
       fs.writeFileSync(targetPath, content, 'utf-8');
-      return targetPath;
-    } catch {
-      return null;
+      _cookiePath = targetPath;
+      logger.info('Using cookies from YOUTUBE_COOKIES env var');
+      return _cookiePath;
+    } catch (e) {
+      logger.warn({ err: e }, 'Failed to write YOUTUBE_COOKIES to file');
     }
   }
+
+  _cookiePath = null;
   return null;
+}
+
+function getCommonArgs(): string[] {
+  const args = [
+    '--no-playlist',
+    '--no-warnings',
+    '--no-check-certificates',
+    '--force-overwrites',
+    '--no-cache-dir',
+    '--socket-timeout', '30',
+    '--retries', '3',
+    '--fragment-retries', '3',
+    '--js-runtimes', 'node',
+    '--user-agent',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
+  ];
+
+  const cookiePath = getCookieFilePath();
+  if (cookiePath) {
+    args.push('--cookies', cookiePath);
+  }
+
+  return args;
+}
+
+function sanitizeTitle(title: string): string {
+  return title
+    .replace(/[<>:"/\\|?*\x00-\x1F]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .slice(0, 200);
 }
 
 export interface YtDlpExtractionResult {
@@ -57,29 +105,18 @@ export interface YtDlpExtractionResult {
 export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractionResult> {
   return new Promise((resolve, reject) => {
     const args = [
+      ...getCommonArgs(),
       '-J',
-      '--no-playlist',
-      '--no-warnings',
-      '--no-check-certificates',
       '--skip-download',
-      '--no-cache-dir',
-      '--socket-timeout', '10',
-      '--js-runtimes', 'node',
-      '--user-agent',
-      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+      url,
     ];
 
-    const cookiePath = getCookieFilePath();
-    if (cookiePath) {
-      args.push('--cookies', cookiePath);
-    } else {
-      args.push('--extractor-args', 'youtube:player_client=android,ios,mweb,web_safari');
-    }
-
-    args.push(url);
-
     const bin = getBinPath();
+    logger.info({ bin, url }, 'Extracting media metadata');
     const proc = spawn(bin, args);
+
+    try { proc.stdin?.end(); } catch { /* ignore */ }
+
     let stdoutData = '';
     let stderrData = '';
 
@@ -98,7 +135,7 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
 
     proc.on('close', (code) => {
       if (code !== 0) {
-        logger.warn({ code, stderr: stderrData.slice(0, 300) }, 'yt-dlp exited with non-zero code');
+        logger.warn({ code, stderr: stderrData.slice(0, 500) }, 'yt-dlp extraction exited with non-zero code');
         return reject(new Error(stderrData || 'Failed to extract media information'));
       }
 
@@ -153,9 +190,8 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
 
         const standardHeights = [2160, 1440, 1080, 720, 480, 360];
         const videoFormats: MediaFormat[] = [];
-        const videoDuration = typeof data.duration === 'number' && data.duration > 0 ? data.duration : 210; // Default ~3.5 min
+        const videoDuration = typeof data.duration === 'number' && data.duration > 0 ? data.duration : 210;
 
-        // Pick matching qualities
         for (const h of standardHeights) {
           const hasQuality = Array.from(availableHeights).some((availH) => availH >= h - 40);
           if (hasQuality || (h <= 1080 && availableHeights.size === 0)) {
@@ -177,7 +213,6 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
           }
         }
 
-        // Fallback standard format if none detected
         if (videoFormats.length === 0) {
           videoFormats.push({
             formatId: 'video-best',
@@ -190,7 +225,6 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
           });
         }
 
-        // Audio formats
         const audioFormats: MediaFormat[] = [
           {
             formatId: 'audio-mp3',
@@ -245,11 +279,13 @@ export function killActiveProcess(jobId: string): boolean {
 
 /**
  * Download media with real-time progress callbacks.
+ * Uses the original video title as the filename.
  */
 export async function downloadWithYtDlp(
   jobId: string,
   url: string,
   formatId: string,
+  mediaTitle: string | undefined,
   onProgress: (progress: number, speed?: number, eta?: number) => void
 ): Promise<{ filePath: string; fileName: string; fileSize: number; mimeType: string }> {
   const tempDir = path.resolve(config.storage.tempDir);
@@ -263,26 +299,11 @@ export async function downloadWithYtDlp(
   const finalFilePath = path.join(tempDir, `${jobId}.${targetExtension}`);
 
   const args = [
+    ...getCommonArgs(),
     '--newline',
-    '--no-playlist',
-    '--no-warnings',
-    '--no-check-certificates',
-    '--force-overwrites',
-    '--no-cache-dir',
-    '--socket-timeout', '30',
-    '--js-runtimes', 'node',
-    '--user-agent',
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
     '--postprocessor-args',
     'ffmpeg:-nostdin -y',
   ];
-
-  const cookiePath = getCookieFilePath();
-  if (cookiePath) {
-    args.push('--cookies', cookiePath);
-  } else {
-    args.push('--extractor-args', 'youtube:player_client=android,ios,mweb,web_safari');
-  }
 
   const ffmpegLoc = getFfmpegPath();
   if (ffmpegLoc) {
@@ -305,7 +326,6 @@ export async function downloadWithYtDlp(
       );
     }
   } else {
-    // Video format
     let heightLimit = 1080;
     if (formatId === 'video-2160p') heightLimit = 2160;
     else if (formatId === 'video-1440p') heightLimit = 1440;
@@ -324,23 +344,19 @@ export async function downloadWithYtDlp(
 
   return new Promise((resolve, reject) => {
     const bin = getBinPath();
+    logger.info({ bin, url, formatId, jobId }, 'Starting yt-dlp download');
     const proc = spawn(bin, args);
     activeProcesses.set(jobId, proc);
 
-    try {
-      proc.stdin?.end();
-    } catch {
-      // ignore
-    }
+    try { proc.stdin?.end(); } catch { /* ignore */ }
 
     const timeout = setTimeout(() => {
       killActiveProcess(jobId);
-      reject(new Error('Media download timed out.'));
+      reject(new Error('Media download timed out after 10 minutes.'));
     }, 600000);
 
     proc.stdout.on('data', (data: Buffer) => {
       const line = data.toString();
-      // Parse progress: [download]  45.2% of 12.34MiB at 4.56MiB/s ETA 00:05
       const percentMatch = line.match(/(\d+(?:\.\d+)?)%/);
       const speedMatch = line.match(/at\s+([\d.]+(?:[kKMGT]?i?B\/s))/i);
       const etaMatch = line.match(/ETA\s+(\d+:\d+)/i);
@@ -364,6 +380,7 @@ export async function downloadWithYtDlp(
     let stderr = '';
     proc.stderr.on('data', (data: Buffer) => {
       stderr += data.toString();
+      logger.debug({ stderr: data.toString().trim() }, 'yt-dlp stderr');
     });
 
     proc.on('close', (code) => {
@@ -371,14 +388,13 @@ export async function downloadWithYtDlp(
       activeProcesses.delete(jobId);
 
       if (code !== 0) {
-        logger.error({ code, stderr }, 'yt-dlp download failed');
+        logger.error({ code, stderr: stderr.slice(0, 500) }, 'yt-dlp download failed');
         return reject(new Error(stderr || 'Download processing failed'));
       }
 
-      // Check final generated file
+      // Find the output file
       let matchedFile = finalFilePath;
       if (!fs.existsSync(matchedFile)) {
-        // Find any file starting with jobId in temp dir
         const files = fs.readdirSync(tempDir);
         const candidate = files.find((f) => f.startsWith(jobId));
         if (candidate) {
@@ -393,7 +409,10 @@ export async function downloadWithYtDlp(
       const stat = fs.statSync(matchedFile);
       const ext = path.extname(matchedFile).replace('.', '') || targetExtension;
       const mimeType = getMimeType(ext);
-      const fileName = `media-${jobId.slice(0, 8)}.${ext}`;
+
+      // Use the original video title for the filename
+      const safeTitle = sanitizeTitle(mediaTitle || 'download');
+      const fileName = `${safeTitle}.${ext}`;
 
       onProgress(100);
 
@@ -406,6 +425,8 @@ export async function downloadWithYtDlp(
     });
 
     proc.on('error', (err) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(jobId);
       reject(err);
     });
   });
@@ -422,9 +443,9 @@ function getQualityLabel(height: number): string {
 }
 
 function estimateVideoSize(durationSeconds: number, height: number): number {
-  let bitrateBps = 3000000; // 3 Mbps default for 1080p
-  if (height >= 2160) bitrateBps = 18000000; // 18 Mbps for 4K
-  else if (height >= 1440) bitrateBps = 8000000; // 8 Mbps for 1440p
+  let bitrateBps = 3000000;
+  if (height >= 2160) bitrateBps = 18000000;
+  else if (height >= 1440) bitrateBps = 8000000;
   else if (height >= 1080) bitrateBps = 4500000;
   else if (height >= 720) bitrateBps = 2200000;
   else if (height >= 480) bitrateBps = 1000000;

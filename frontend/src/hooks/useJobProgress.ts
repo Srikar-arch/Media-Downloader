@@ -60,7 +60,7 @@ export function useJobProgress() {
     }
   };
 
-  const startDownload = async (url: string, formatId: string) => {
+  const startDownload = async (url: string, formatId: string, mediaTitle?: string) => {
     setIsDownloading(true);
     setStatus('queued');
     setProgress(10);
@@ -73,7 +73,7 @@ export function useJobProgress() {
     if (unsubscribeRef.current) unsubscribeRef.current();
 
     try {
-      const { job } = await createDownload(url, formatId);
+      const { job } = await createDownload(url, formatId, mediaTitle);
       setActiveJobId(job.id);
       setStatus(job.status as JobStatus);
       setProgress(Math.max(job.progress, 15));

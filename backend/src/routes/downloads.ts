@@ -60,7 +60,7 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
     }
 
     // Start async download processing
-    processDownloadAsync(job.id, parsed.data.url, parsed.data.formatId).catch(err => {
+    processDownloadAsync(job.id, parsed.data.url, parsed.data.formatId, parsed.data.mediaTitle).catch(err => {
       logger.error({ err, jobId: job.id }, 'Download processing failed');
     });
 
@@ -274,7 +274,8 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
 async function processDownloadAsync(
   jobId: string,
   url: string,
-  formatId: string
+  formatId: string,
+  mediaTitle?: string
 ): Promise<void> {
   try {
     updateJobStatus(jobId, 'analyzing', 15);
@@ -312,6 +313,7 @@ async function processDownloadAsync(
       jobId,
       url,
       formatId,
+      mediaTitle,
       (progress, speed, eta) => {
         const job = getJob(jobId);
         if (job && job.status !== 'cancelled') {
@@ -337,3 +339,4 @@ async function processDownloadAsync(
     });
   }
 }
+

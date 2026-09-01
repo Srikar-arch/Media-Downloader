@@ -37,7 +37,8 @@ export const HomePage: React.FC = () => {
   const handleStartDownload = (formatId: string) => {
     if (!currentUrl) return;
     setIsModalOpen(true);
-    startDownload(currentUrl, formatId);
+    const mediaTitle = result?.media?.title;
+    startDownload(currentUrl, formatId, mediaTitle);
   };
 
   const handleCloseModal = () => {

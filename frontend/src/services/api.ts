@@ -69,13 +69,14 @@ export async function analyzeMedia(url: string): Promise<AnalyzeResponse> {
   });
 }
 
-export async function createDownload(url: string, formatId: string): Promise<{ success: boolean; job: { id: string; status: string; progress: number } }> {
+export async function createDownload(url: string, formatId: string, mediaTitle?: string): Promise<{ success: boolean; job: { id: string; status: string; progress: number } }> {
   return request('/downloads', {
     method: 'POST',
     body: JSON.stringify({
       url,
       formatId,
       sessionId: getSessionId(),
+      mediaTitle,
     }),
   });
 }

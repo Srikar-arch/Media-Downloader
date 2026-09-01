@@ -18,6 +18,7 @@ export const createDownloadSchema = z.object({
     .url('Please enter a valid URL'),
   formatId: z.string().min(1, 'Format selection is required'),
   sessionId: z.string().min(1, 'Session ID is required').max(128),
+  mediaTitle: z.string().max(500).optional(),
 });
 
 export const jobIdSchema = z.object({
