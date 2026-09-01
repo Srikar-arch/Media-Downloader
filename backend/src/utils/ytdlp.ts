@@ -62,7 +62,6 @@ function getCookieFilePath(): string | null {
   return null;
 }
 function getCommonArgs(): string[] {
-  const nodePath = process.execPath || 'node';
   const args = [
     '--no-playlist',
     '--no-warnings',
@@ -72,16 +71,21 @@ function getCommonArgs(): string[] {
     '--socket-timeout', '20',
     '--retries', '5',
     '--fragment-retries', '5',
-    '--js-runtimes', `node:${nodePath}`,
     '--user-agent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
   ];
+
+  if (fs.existsSync('/usr/local/bin/deno')) {
+    args.push('--js-runtimes', 'deno:/usr/local/bin/deno');
+  } else if (process.execPath) {
+    args.push('--js-runtimes', `node:${process.execPath}`);
+  }
 
   const cookiePath = getCookieFilePath();
   if (cookiePath) {
     args.push('--cookies', cookiePath);
   } else {
-    args.push('--extractor-args', 'youtube:player_client=android,ios');
+    args.push('--extractor-args', 'youtube:player_client=android,ios,mweb');
   }
 
   return args;

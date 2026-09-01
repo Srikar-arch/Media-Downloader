@@ -21,10 +21,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3 \
     curl \
     ca-certificates \
+    unzip \
     && rm -rf /var/lib/apt/lists/* \
     && mkdir -p /app/bin \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp -o /app/bin/yt-dlp \
-    && chmod 755 /app/bin/yt-dlp
+    && chmod 755 /app/bin/yt-dlp \
+    && curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/package*.json ./
