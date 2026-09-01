@@ -3,6 +3,7 @@ import { Hero } from '../components/home/Hero';
 import { UrlInput } from '../components/home/UrlInput';
 import { MediaResultCard } from '../components/home/MediaResultCard';
 import { DownloadProgressModal } from '../components/home/DownloadProgressModal';
+import { CookieModal } from '../components/home/CookieModal';
 import { HowItWorks } from '../components/home/HowItWorks';
 import { SupportedPlatforms } from '../components/home/SupportedPlatforms';
 import { Features } from '../components/home/Features';
@@ -28,6 +29,7 @@ export const HomePage: React.FC = () => {
   } = useJobProgress();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isCookieModalOpen, setIsCookieModalOpen] = useState(false);
   const [currentUrl, setCurrentUrl] = useState('');
 
   const handleAnalyze = (url: string) => {
@@ -106,6 +108,12 @@ export const HomePage: React.FC = () => {
         onCancel={handleCancelDownload}
         onClose={handleCloseModal}
         onRetryDownload={retrySave}
+        onOpenCookieModal={() => setIsCookieModalOpen(true)}
+      />
+
+      <CookieModal
+        isOpen={isCookieModalOpen}
+        onClose={() => setIsCookieModalOpen(false)}
       />
 
       {/* Informational & Marketing Sections */}

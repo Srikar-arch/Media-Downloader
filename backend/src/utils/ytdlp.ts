@@ -61,6 +61,33 @@ function getCookieFilePath(): string | null {
   _cookiePath = null;
   return null;
 }
+
+export function setYouTubeCookies(content: string): boolean {
+  try {
+    const targetPath = path.resolve(import.meta.dirname, '../../data/cookies.txt');
+    const dir = path.dirname(targetPath);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    let raw = content.trim();
+    if (raw.startsWith('base64:')) {
+      raw = Buffer.from(raw.replace('base64:', ''), 'base64').toString('utf-8');
+    }
+    fs.writeFileSync(targetPath, raw, 'utf-8');
+    _cookiePath = targetPath;
+    logger.info({ path: targetPath }, 'YouTube cookies updated successfully via API');
+    return true;
+  } catch (err) {
+    logger.error({ err }, 'Failed to save cookies');
+    return false;
+  }
+}
+
+export function getYouTubeCookieStatus(): { authenticated: boolean; path?: string } {
+  const p = getCookieFilePath();
+  return {
+    authenticated: !!p && fs.existsSync(p),
+    path: p || undefined,
+  };
+}
 function getCommonArgs(): string[] {
   const args = [
     '--no-playlist',

@@ -22,6 +22,7 @@ interface DownloadProgressModalProps {
   onCancel: () => void;
   onClose: () => void;
   onRetryDownload?: () => void;
+  onOpenCookieModal?: () => void;
 }
 
 export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
@@ -34,6 +35,7 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   onCancel,
   onClose,
   onRetryDownload,
+  onOpenCookieModal,
 }) => {
   if (!isOpen) return null;
 
@@ -219,13 +221,27 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
               )}
             </>
           ) : (
-            <button
-              type="button"
-              onClick={onClose}
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
-            >
-              Close
-            </button>
+            <div className="w-full space-y-2">
+              {onOpenCookieModal && (errorMessage?.toLowerCase().includes('bot') || errorMessage?.toLowerCase().includes('cookie') || errorMessage?.toLowerCase().includes('sign in')) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClose();
+                    onOpenCookieModal();
+                  }}
+                  className="w-full py-2.5 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 text-xs font-bold transition-all shadow-lg shadow-amber-500/20 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  🔑 Unlock YouTube Cloud Authentication
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
           )}
         </div>
       </div>

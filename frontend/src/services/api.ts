@@ -99,6 +99,17 @@ export async function fetchPlatforms(): Promise<{ success: boolean; platforms: P
   return request<{ success: boolean; platforms: PlatformInfo[] }>('/platforms');
 }
 
+export async function getCookieStatus(): Promise<{ success: boolean; authenticated: boolean }> {
+  return request<{ success: boolean; authenticated: boolean }>('/media/cookies/status');
+}
+
+export async function saveCookies(cookies: string): Promise<{ success: boolean; message: string }> {
+  return request<{ success: boolean; message: string }>('/media/cookies', {
+    method: 'POST',
+    body: JSON.stringify({ cookies }),
+  });
+}
+
 // SSE listener for real-time progress
 export function subscribeToJob(
   jobId: string,
