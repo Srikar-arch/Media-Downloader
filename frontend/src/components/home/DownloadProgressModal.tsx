@@ -67,32 +67,32 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
     switch (status) {
       case 'queued':
         return {
-          title: 'Initializing Queue…',
-          desc: 'Connecting to high-speed media stream worker.',
+          title: 'Initializing Engine…',
+          desc: 'Connecting to media processing pipeline.',
           icon: <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />,
         };
       case 'analyzing':
         return {
-          title: 'Analyzing Stream…',
-          desc: 'Validating media signatures and high-speed chunks.',
+          title: 'Extracting Stream…',
+          desc: 'Resolving media channels and bitrates.',
           icon: <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />,
         };
       case 'downloading':
         return {
-          title: 'Retrieving Media Stream…',
-          desc: 'Streaming multi-threaded chunks directly to device.',
+          title: 'Preparing Media File…',
+          desc: 'Merging high-definition video and audio tracks.',
           icon: <Download className="w-6 h-6 text-indigo-400 animate-bounce" />,
         };
       case 'processing':
         return {
           title: 'Finalizing Package…',
-          desc: 'Packaging container metadata and sending to device.',
+          desc: 'Applying metadata tags and container format.',
           icon: <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />,
         };
       case 'completed':
         return {
-          title: 'Download Complete!',
-          desc: 'The video has been saved directly to your device Downloads.',
+          title: 'Transferring to Device!',
+          desc: 'Your browser is saving the media directly to your Downloads.',
           icon: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
         };
       case 'cancelled':

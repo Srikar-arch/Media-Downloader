@@ -172,19 +172,50 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
       });
     }
 
-    const stream = fs.createReadStream(job.file_path);
+    const stat = fs.statSync(job.file_path);
+    const fileSize = stat.size;
     const fileName = job.file_name || `download.${job.requested_format || 'mp4'}`;
     const safeAsciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
     const encodedFileName = encodeURIComponent(fileName).replace(/['()]/g, escape).replace(/\*/g, '%2A');
-
     const origin = (request.headers.origin as string) || '*';
+
+    const range = request.headers.range;
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize || end >= fileSize) {
+        return reply
+          .code(416)
+          .header('Content-Range', `bytes */${fileSize}`)
+          .send('Requested Range Not Satisfiable');
+      }
+
+      const chunksize = end - start + 1;
+      const fileStream = fs.createReadStream(job.file_path, { start, end, highWaterMark: 1024 * 512 });
+
+      return reply
+        .code(206)
+        .header('Content-Range', `bytes ${start}-${end}/${fileSize}`)
+        .header('Accept-Ranges', 'bytes')
+        .header('Content-Length', chunksize)
+        .header('Content-Type', job.mime_type || 'application/octet-stream')
+        .header('Content-Disposition', `attachment; filename="${safeAsciiName}"; filename*=UTF-8''${encodedFileName}`)
+        .header('Access-Control-Allow-Origin', origin)
+        .header('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Range, Accept-Ranges')
+        .send(fileStream);
+    }
+
+    const stream = fs.createReadStream(job.file_path, { highWaterMark: 1024 * 512 });
     return reply
       .header('Content-Type', job.mime_type || 'application/octet-stream')
       .header('Content-Disposition', `attachment; filename="${safeAsciiName}"; filename*=UTF-8''${encodedFileName}`)
-      .header('Content-Length', job.file_size || 0)
-      .header('Cache-Control', 'no-cache, no-store, must-revalidate')
+      .header('Content-Length', fileSize)
+      .header('Accept-Ranges', 'bytes')
+      .header('Cache-Control', 'public, max-age=3600')
       .header('Access-Control-Allow-Origin', origin)
-      .header('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length')
+      .header('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length, Content-Range, Accept-Ranges')
       .send(stream);
   });
 
