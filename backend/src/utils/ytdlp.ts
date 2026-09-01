@@ -35,6 +35,9 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
       '--no-playlist',
       '--no-warnings',
       '--no-check-certificates',
+      '--skip-download',
+      '--no-cache-dir',
+      '--socket-timeout', '10',
       '--js-runtimes', 'node',
       '--user-agent',
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -83,21 +86,30 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
           height: data.height || undefined,
         };
 
-        // Determine available resolutions from formats
+        // Determine available resolutions and extract real sizes
         const rawFormats = Array.isArray(data.formats) ? data.formats : [];
         const availableHeights = new Set<number>();
+        const formatSizeMap = new Map<number, number>();
 
         rawFormats.forEach((f: any) => {
+          let h: number | undefined;
           if (typeof f.height === 'number' && f.height > 0) {
-            availableHeights.add(f.height);
-          }
-          if (typeof f.resolution === 'string') {
+            h = f.height;
+          } else if (typeof f.resolution === 'string') {
             const match = f.resolution.match(/(\d+)x(\d+)/);
-            if (match) availableHeights.add(parseInt(match[2], 10));
-          }
-          if (typeof f.format_note === 'string') {
+            if (match) h = parseInt(match[2], 10);
+          } else if (typeof f.format_note === 'string') {
             const match = f.format_note.match(/(\d+)p/);
-            if (match) availableHeights.add(parseInt(match[1], 10));
+            if (match) h = parseInt(match[1], 10);
+          }
+
+          if (h) {
+            availableHeights.add(h);
+            const sz = f.filesize || f.filesize_approx;
+            if (typeof sz === 'number' && sz > 0) {
+              const current = formatSizeMap.get(h) || 0;
+              if (sz > current) formatSizeMap.set(h, sz);
+            }
           }
         });
 
@@ -107,15 +119,15 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
 
         const standardHeights = [2160, 1440, 1080, 720, 480, 360];
         const videoFormats: MediaFormat[] = [];
+        const videoDuration = typeof data.duration === 'number' && data.duration > 0 ? data.duration : 210; // Default ~3.5 min
 
         // Pick matching qualities
         for (const h of standardHeights) {
           const hasQuality = Array.from(availableHeights).some((availH) => availH >= h - 40);
           if (hasQuality || (h <= 1080 && availableHeights.size === 0)) {
             const qualityLabel = getQualityLabel(h);
-            const approxSize = data.duration
-              ? estimateVideoSize(data.duration, h)
-              : undefined;
+            const exactSize = formatSizeMap.get(h);
+            const estimatedSize = exactSize || estimateVideoSize(videoDuration, h);
 
             videoFormats.push({
               formatId: `video-${h}p`,
@@ -124,7 +136,7 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
               resolution: `${Math.round((h * 16) / 9)}x${h}`,
               height: h,
               container: 'mp4',
-              fileSize: approxSize,
+              fileSize: estimatedSize,
               type: 'video',
               isPermitted: true,
             });
@@ -138,7 +150,7 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
             label: 'Original Quality',
             quality: data.height ? `${data.height}p` : 'Best Quality',
             container: 'mp4',
-            fileSize: data.filesize || data.filesize_approx || undefined,
+            fileSize: data.filesize || data.filesize_approx || estimateVideoSize(videoDuration, 1080),
             type: 'video',
             isPermitted: true,
           });
@@ -151,7 +163,7 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
             label: 'MP3 High Quality',
             quality: '320 kbps',
             container: 'mp3',
-            fileSize: data.duration ? Math.round((data.duration * 320 * 1000) / 8) : 9846374,
+            fileSize: Math.round((videoDuration * 320 * 1000) / 8),
             bitrate: 320000,
             type: 'audio',
             isPermitted: true,
@@ -161,7 +173,7 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
             label: 'M4A Original Audio',
             quality: '256 kbps',
             container: 'm4a',
-            fileSize: data.duration ? Math.round((data.duration * 256 * 1000) / 8) : 7864320,
+            fileSize: Math.round((videoDuration * 256 * 1000) / 8),
             bitrate: 256000,
             type: 'audio',
             isPermitted: true,

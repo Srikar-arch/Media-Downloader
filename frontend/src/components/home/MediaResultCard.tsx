@@ -50,14 +50,27 @@ export const MediaResultCard: React.FC<MediaResultCardProps> = ({
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Format file size in MB/GB
-  const formatFileSize = (bytes?: number) => {
-    if (!bytes) return null;
-    const mb = bytes / (1024 * 1024);
-    if (mb > 1000) {
-      return `~${(mb / 1024).toFixed(2)} GB`;
+  // Format file size in MB/GB with intelligent fallback
+  const formatFileSize = (fmt: { fileSize?: number; quality?: string; height?: number; type?: string }) => {
+    if (fmt.fileSize && fmt.fileSize > 0) {
+      const mb = fmt.fileSize / (1024 * 1024);
+      if (mb >= 1000) return `~${(mb / 1024).toFixed(2)} GB`;
+      return `~${mb.toFixed(1)} MB`;
     }
-    return `~${mb.toFixed(1)} MB`;
+    const dur = media.duration || 210;
+    const q = (fmt.quality || '').toLowerCase();
+    let bitrateBps = 4500000;
+    if (q.includes('2160') || q.includes('4k')) bitrateBps = 18000000;
+    else if (q.includes('1440') || q.includes('2k')) bitrateBps = 8500000;
+    else if (q.includes('1080')) bitrateBps = 4500000;
+    else if (q.includes('720')) bitrateBps = 2200000;
+    else if (q.includes('480')) bitrateBps = 1100000;
+    else if (q.includes('360')) bitrateBps = 600000;
+    else if (fmt.type === 'audio' || q.includes('mp3') || q.includes('m4a')) bitrateBps = 320000;
+
+    const estimatedMb = (dur * bitrateBps) / (8 * 1024 * 1024);
+    if (estimatedMb >= 1000) return `~${(estimatedMb / 1024).toFixed(2)} GB`;
+    return `~${estimatedMb.toFixed(1)} MB`;
   };
 
   return (
@@ -216,8 +229,8 @@ export const MediaResultCard: React.FC<MediaResultCardProps> = ({
                           <span className="text-[11px] text-slate-400">
                             {fmt.label}
                           </span>
-                          <span className="text-[11px] font-mono text-indigo-300/80">
-                            {formatFileSize(fmt.fileSize) || 'Direct stream'}
+                          <span className="text-[11px] font-mono text-indigo-300/90 font-medium">
+                            {formatFileSize(fmt)}
                           </span>
                         </button>
                       );
@@ -236,8 +249,8 @@ export const MediaResultCard: React.FC<MediaResultCardProps> = ({
                     </div>
                     <div className="text-right">
                       <div className="text-slate-400">Estimated Size</div>
-                      <div className="font-mono font-bold text-indigo-300">
-                        {formatFileSize(selectedFormat.fileSize) || 'Calculated at download'}
+                      <div className="font-mono font-bold text-indigo-300 text-sm">
+                        {formatFileSize(selectedFormat)}
                       </div>
                     </div>
                   </div>
