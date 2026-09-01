@@ -19,46 +19,54 @@ function getFfmpegPath(): string | null {
   return null;
 }
 
-let _cookiePath: string | null | undefined = undefined;
-
 function getCookieFilePath(): string | null {
-  if (_cookiePath !== undefined) return _cookiePath;
-
-  // 1. Explicit file path
+  // 1. Explicit file path from env
   if (process.env.COOKIES_FILE && fs.existsSync(process.env.COOKIES_FILE)) {
-    _cookiePath = process.env.COOKIES_FILE;
-    logger.info({ path: _cookiePath }, 'Using cookies from COOKIES_FILE');
-    return _cookiePath;
+    return process.env.COOKIES_FILE;
   }
 
   // 2. Local data/cookies.txt
   const localCookie = path.resolve(import.meta.dirname, '../../data/cookies.txt');
   if (fs.existsSync(localCookie)) {
-    _cookiePath = localCookie;
-    logger.info({ path: _cookiePath }, 'Using cookies from data/cookies.txt');
-    return _cookiePath;
+    try {
+      const stats = fs.statSync(localCookie);
+      if (stats.size > 10) {
+        return localCookie;
+      }
+    } catch {
+      // ignore
+    }
   }
 
-  // 3. Inline env var (raw or base64-encoded)
+  // 3. Fallback to /app/data/cookies.txt
+  if (fs.existsSync('/app/data/cookies.txt')) {
+    try {
+      const stats = fs.statSync('/app/data/cookies.txt');
+      if (stats.size > 10) {
+        return '/app/data/cookies.txt';
+      }
+    } catch {
+      // ignore
+    }
+  }
+
+  // 4. Inline env var (raw or base64-encoded)
   if (process.env.YOUTUBE_COOKIES) {
     try {
       const targetPath = path.resolve(import.meta.dirname, '../../data/cookies.txt');
       const dir = path.dirname(targetPath);
       if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      let content = process.env.YOUTUBE_COOKIES;
+      let content = process.env.YOUTUBE_COOKIES.trim();
       if (content.startsWith('base64:')) {
         content = Buffer.from(content.replace('base64:', ''), 'base64').toString('utf-8');
       }
       fs.writeFileSync(targetPath, content, 'utf-8');
-      _cookiePath = targetPath;
-      logger.info('Using cookies from YOUTUBE_COOKIES env var');
-      return _cookiePath;
+      return targetPath;
     } catch (e) {
       logger.warn({ err: e }, 'Failed to write YOUTUBE_COOKIES to file');
     }
   }
 
-  _cookiePath = null;
   return null;
 }
 
@@ -72,8 +80,17 @@ export function setYouTubeCookies(content: string): boolean {
       raw = Buffer.from(raw.replace('base64:', ''), 'base64').toString('utf-8');
     }
     fs.writeFileSync(targetPath, raw, 'utf-8');
-    _cookiePath = targetPath;
-    logger.info({ path: targetPath }, 'YouTube cookies updated successfully via API');
+
+    // Also write to /app/data/cookies.txt if in production container
+    try {
+      if (fs.existsSync('/app/data')) {
+        fs.writeFileSync('/app/data/cookies.txt', raw, 'utf-8');
+      }
+    } catch {
+      // ignore
+    }
+
+    logger.info({ path: targetPath, size: raw.length }, 'YouTube cookies updated successfully via API');
     return true;
   } catch (err) {
     logger.error({ err }, 'Failed to save cookies');
