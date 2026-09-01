@@ -25,53 +25,40 @@ export function useJobProgress() {
   const triggerFileDownload = (jobId: string) => {
     if (hasTriggeredDownloadRef.current) return;
     hasTriggeredDownloadRef.current = true;
-    performFileDownload(jobId);
-  };
 
-  // Reliable download using fetch + Blob + createObjectURL
-  // This approach works cross-origin, never triggers popup blockers,
-  // and doesn't navigate away from the page
-  const performFileDownload = async (jobId: string) => {
     const downloadUrl = getDownloadFileUrl(jobId);
 
-    try {
-      const response = await fetch(downloadUrl);
-      if (!response.ok) throw new Error('Download failed');
+    // Trigger instant native direct download to device
+    // By using hidden iframe and direct anchor click without target=_blank,
+    // the server's Content-Disposition: attachment header triggers the browser's
+    // native download manager straight into the user's Downloads directory.
+    let iframe = document.getElementById('__direct_download_frame') as HTMLIFrameElement | null;
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      iframe.id = '__direct_download_frame';
+      iframe.style.position = 'fixed';
+      iframe.style.width = '1px';
+      iframe.style.height = '1px';
+      iframe.style.opacity = '0.01';
+      iframe.style.pointerEvents = 'none';
+      iframe.style.bottom = '0';
+      iframe.style.right = '0';
+      document.body.appendChild(iframe);
+    }
+    iframe.src = downloadUrl;
 
-      // Extract filename from Content-Disposition header
-      const contentDisposition = response.headers.get('Content-Disposition');
-      let fileName = 'download.mp4';
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
-        if (match) fileName = match[1];
-      }
-
-      const blob = await response.blob();
-      const blobUrl = URL.createObjectURL(blob);
-
+    // Anchor fallback for all mobile and desktop browsers
+    setTimeout(() => {
       const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = fileName;  // This attribute forces download, never opens in browser
+      a.href = downloadUrl;
+      a.setAttribute('download', '');
       a.style.display = 'none';
       document.body.appendChild(a);
       a.click();
-
-      // Cleanup
       setTimeout(() => {
-        document.body.removeChild(a);
-        URL.revokeObjectURL(blobUrl);
-      }, 5000);
-    } catch (err) {
-      console.error('File download failed:', err);
-      // Fallback: direct navigation (works when Content-Disposition: attachment is set)
-      window.location.href = downloadUrl;
-    }
-  };
-
-  // Manual save function the user can trigger via a button click
-  const saveFile = () => {
-    if (!activeJobId) return;
-    performFileDownload(activeJobId);
+        if (a.parentNode) a.parentNode.removeChild(a);
+      }, 1000);
+    }, 50);
   };
 
   const handleTerminalState = (jobId: string, currentStatus: JobStatus, errorMsg?: string | null) => {
@@ -194,6 +181,11 @@ export function useJobProgress() {
     };
   }, []);
 
+  const retrySave = () => {
+    if (!activeJobId) return;
+    triggerFileDownload(activeJobId);
+  };
+
   return {
     activeJobId,
     status,
@@ -206,6 +198,6 @@ export function useJobProgress() {
     startDownload,
     cancel,
     reset,
-    saveFile,
+    retrySave,
   };
 }

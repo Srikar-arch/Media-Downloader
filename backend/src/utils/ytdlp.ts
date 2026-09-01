@@ -69,9 +69,9 @@ function getCommonArgs(): string[] {
     '--no-check-certificates',
     '--force-overwrites',
     '--no-cache-dir',
-    '--socket-timeout', '30',
-    '--retries', '3',
-    '--fragment-retries', '3',
+    '--socket-timeout', '15',
+    '--retries', '5',
+    '--fragment-retries', '5',
     '--js-runtimes', 'node',
     '--user-agent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36',
@@ -80,6 +80,8 @@ function getCommonArgs(): string[] {
   const cookiePath = getCookieFilePath();
   if (cookiePath) {
     args.push('--cookies', cookiePath);
+  } else {
+    args.push('--extractor-args', 'youtube:player_client=android,web');
   }
 
   return args;
@@ -301,8 +303,11 @@ export async function downloadWithYtDlp(
   const args = [
     ...getCommonArgs(),
     '--newline',
+    '--concurrent-fragments', '8',
+    '--buffer-size', '16M',
+    '--http-chunk-size', '10M',
     '--postprocessor-args',
-    'ffmpeg:-nostdin -y',
+    'ffmpeg:-nostdin -y -threads 4 -preset ultrafast',
   ];
 
   const ffmpegLoc = getFfmpegPath();

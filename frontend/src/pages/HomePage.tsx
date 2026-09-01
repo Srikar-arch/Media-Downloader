@@ -24,7 +24,7 @@ export const HomePage: React.FC = () => {
     startDownload,
     cancel,
     reset,
-    saveFile,
+    retrySave,
   } = useJobProgress();
 
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -105,7 +105,7 @@ export const HomePage: React.FC = () => {
         errorMessage={errorMessage}
         onCancel={handleCancelDownload}
         onClose={handleCloseModal}
-        onSaveFile={saveFile}
+        onRetryDownload={retrySave}
       />
 
       {/* Informational & Marketing Sections */}

@@ -174,12 +174,15 @@ export async function downloadRoutes(app: FastifyInstance): Promise<void> {
 
     const stream = fs.createReadStream(job.file_path);
     const fileName = job.file_name || `download.${job.requested_format || 'mp4'}`;
+    const safeAsciiName = fileName.replace(/[^\x20-\x7E]/g, '_').replace(/"/g, '');
+    const encodedFileName = encodeURIComponent(fileName).replace(/['()]/g, escape).replace(/\*/g, '%2A');
 
     const origin = (request.headers.origin as string) || '*';
     return reply
       .header('Content-Type', job.mime_type || 'application/octet-stream')
-      .header('Content-Disposition', `attachment; filename="${fileName}"`)
+      .header('Content-Disposition', `attachment; filename="${safeAsciiName}"; filename*=UTF-8''${encodedFileName}`)
       .header('Content-Length', job.file_size || 0)
+      .header('Cache-Control', 'no-cache, no-store, must-revalidate')
       .header('Access-Control-Allow-Origin', origin)
       .header('Access-Control-Expose-Headers', 'Content-Disposition, Content-Length')
       .send(stream);

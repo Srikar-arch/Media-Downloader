@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
   Download,
   CheckCircle2,
@@ -8,8 +8,7 @@ import {
   X,
   Gauge,
   Timer,
-  FileCheck,
-  Save,
+  ArrowDownToLine,
 } from 'lucide-react';
 import type { JobStatus } from '../../types';
 
@@ -22,7 +21,7 @@ interface DownloadProgressModalProps {
   errorMessage?: string | null;
   onCancel: () => void;
   onClose: () => void;
-  onSaveFile?: () => void;
+  onRetryDownload?: () => void;
 }
 
 export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
@@ -34,7 +33,7 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   errorMessage,
   onCancel,
   onClose,
-  onSaveFile,
+  onRetryDownload,
 }) => {
   if (!isOpen) return null;
 
@@ -67,31 +66,31 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
       case 'queued':
         return {
           title: 'Initializing Queue…',
-          desc: 'Assigning a high-speed media processing worker.',
+          desc: 'Connecting to high-speed media stream worker.',
           icon: <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />,
         };
       case 'analyzing':
         return {
           title: 'Analyzing Stream…',
-          desc: 'Validating media signatures and permitted streams.',
+          desc: 'Validating media signatures and high-speed chunks.',
           icon: <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />,
         };
       case 'downloading':
         return {
           title: 'Retrieving Media Stream…',
-          desc: 'Streaming authorized chunks directly through worker pool.',
+          desc: 'Streaming multi-threaded chunks directly to device.',
           icon: <Download className="w-6 h-6 text-indigo-400 animate-bounce" />,
         };
       case 'processing':
         return {
           title: 'Finalizing Package…',
-          desc: 'Packaging container metadata and verifying integrity.',
+          desc: 'Packaging container metadata and sending to device.',
           icon: <Loader2 className="w-6 h-6 text-purple-400 animate-spin" />,
         };
       case 'completed':
         return {
-          title: 'Download Ready!',
-          desc: 'Your file is ready. Click the button below to save it.',
+          title: 'Download Complete!',
+          desc: 'The video has been saved directly to your device Downloads.',
           icon: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
         };
       case 'cancelled':
@@ -190,12 +189,12 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
         )}
 
         {/* Action Controls */}
-        <div className="pt-2 flex flex-col gap-3">
+        <div className="pt-2 flex flex-col items-center gap-3">
           {!isTerminal ? (
             <button
               type="button"
               onClick={onCancel}
-              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition-all"
+              className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition-all cursor-pointer"
             >
               Cancel Download
             </button>
@@ -203,25 +202,27 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
             <>
               <button
                 type="button"
-                onClick={onSaveFile}
-                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                Save File to Device
-              </button>
-              <button
-                type="button"
                 onClick={onClose}
-                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition-all"
+                className="w-full py-3 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
               >
-                Close
+                Done
               </button>
+              {onRetryDownload && (
+                <button
+                  type="button"
+                  onClick={onRetryDownload}
+                  className="text-xs text-slate-400 hover:text-indigo-300 transition-colors flex items-center gap-1.5 cursor-pointer mt-1"
+                >
+                  <ArrowDownToLine className="w-3.5 h-3.5" />
+                  Didn't start? Click to re-download file
+                </button>
+              )}
             </>
           ) : (
             <button
               type="button"
               onClick={onClose}
-              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20"
+              className="w-full py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition-all shadow-lg shadow-indigo-600/20 cursor-pointer"
             >
               Close
             </button>
