@@ -35,10 +35,9 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
       '--no-playlist',
       '--no-warnings',
       '--no-check-certificates',
+      '--js-runtimes', 'node',
       '--user-agent',
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      '--extractor-args',
-      'youtube:player_client=android,ios,web',
       url,
     ];
 
@@ -92,6 +91,14 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
           if (typeof f.height === 'number' && f.height > 0) {
             availableHeights.add(f.height);
           }
+          if (typeof f.resolution === 'string') {
+            const match = f.resolution.match(/(\d+)x(\d+)/);
+            if (match) availableHeights.add(parseInt(match[2], 10));
+          }
+          if (typeof f.format_note === 'string') {
+            const match = f.format_note.match(/(\d+)p/);
+            if (match) availableHeights.add(parseInt(match[1], 10));
+          }
         });
 
         if (data.height && typeof data.height === 'number') {
@@ -104,7 +111,6 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
         // Pick matching qualities
         for (const h of standardHeights) {
           const hasQuality = Array.from(availableHeights).some((availH) => availH >= h - 40);
-          // If no specific formats were parsed but height exists or it's standard video
           if (hasQuality || (h <= 1080 && availableHeights.size === 0)) {
             const qualityLabel = getQualityLabel(h);
             const approxSize = data.duration

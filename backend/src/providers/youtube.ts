@@ -84,10 +84,14 @@ export class YouTubeProvider extends MediaProvider {
 
   async getAvailableFormats(_url: string): Promise<MediaFormat[]> {
     return [
-      { formatId: 'video-1080p', label: 'Full HD', quality: '1080p', container: 'mp4', type: 'video', isPermitted: true },
-      { formatId: 'video-720p', label: 'HD', quality: '720p', container: 'mp4', type: 'video', isPermitted: true },
-      { formatId: 'video-480p', label: 'SD', quality: '480p', container: 'mp4', type: 'video', isPermitted: true },
-      { formatId: 'audio-mp3', label: 'MP3 Audio', quality: '320kbps', container: 'mp3', type: 'audio', isPermitted: true },
+      { formatId: 'video-2160p', label: '4K Ultra HD', quality: '2160p', resolution: '3840x2160', height: 2160, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'video-1440p', label: '2K QHD', quality: '1440p', resolution: '2560x1440', height: 1440, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'video-1080p', label: 'Full HD', quality: '1080p', resolution: '1920x1080', height: 1080, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'video-720p', label: 'HD', quality: '720p', resolution: '1280x720', height: 720, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'video-480p', label: 'SD', quality: '480p', resolution: '854x480', height: 480, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'video-360p', label: 'SD', quality: '360p', resolution: '640x360', height: 360, container: 'mp4', type: 'video', isPermitted: true },
+      { formatId: 'audio-mp3', label: 'MP3 High Quality', quality: '320 kbps', container: 'mp3', bitrate: 320000, type: 'audio', isPermitted: true },
+      { formatId: 'audio-m4a', label: 'M4A Original Audio', quality: '256 kbps', container: 'm4a', bitrate: 256000, type: 'audio', isPermitted: true },
     ];
   }
 }
