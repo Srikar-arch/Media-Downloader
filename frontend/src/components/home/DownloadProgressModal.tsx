@@ -9,6 +9,7 @@ import {
   Gauge,
   Timer,
   FileCheck,
+  Save,
 } from 'lucide-react';
 import type { JobStatus } from '../../types';
 
@@ -21,6 +22,7 @@ interface DownloadProgressModalProps {
   errorMessage?: string | null;
   onCancel: () => void;
   onClose: () => void;
+  onSaveFile?: () => void;
 }
 
 export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
@@ -32,6 +34,7 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
   errorMessage,
   onCancel,
   onClose,
+  onSaveFile,
 }) => {
   if (!isOpen) return null;
 
@@ -88,7 +91,7 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
       case 'completed':
         return {
           title: 'Download Ready!',
-          desc: 'Your browser has initiated the file transfer automatically.',
+          desc: 'Your file is ready. Click the button below to save it.',
           icon: <CheckCircle2 className="w-6 h-6 text-emerald-400" />,
         };
       case 'cancelled':
@@ -187,7 +190,7 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
         )}
 
         {/* Action Controls */}
-        <div className="pt-2 flex items-center gap-3">
+        <div className="pt-2 flex flex-col gap-3">
           {!isTerminal ? (
             <button
               type="button"
@@ -196,6 +199,24 @@ export const DownloadProgressModal: React.FC<DownloadProgressModalProps> = ({
             >
               Cancel Download
             </button>
+          ) : isCompleted ? (
+            <>
+              <button
+                type="button"
+                onClick={onSaveFile}
+                className="w-full py-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white text-sm font-bold transition-all shadow-lg shadow-emerald-600/30 flex items-center justify-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                Save File to Device
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                className="w-full py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 border border-slate-750 text-slate-300 hover:text-white text-xs font-semibold transition-all"
+              >
+                Close
+              </button>
+            </>
           ) : (
             <button
               type="button"

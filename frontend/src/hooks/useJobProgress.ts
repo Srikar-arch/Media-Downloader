@@ -25,17 +25,53 @@ export function useJobProgress() {
   const triggerFileDownload = (jobId: string) => {
     if (hasTriggeredDownloadRef.current) return;
     hasTriggeredDownloadRef.current = true;
+    performFileDownload(jobId);
+  };
 
+  // Reliable download using fetch + Blob + createObjectURL
+  // This approach works cross-origin, never triggers popup blockers,
+  // and doesn't navigate away from the page
+  const performFileDownload = async (jobId: string) => {
     const downloadUrl = getDownloadFileUrl(jobId);
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.target = '_blank';
-    a.download = '';
-    document.body.appendChild(a);
-    a.click();
-    setTimeout(() => {
-      document.body.removeChild(a);
-    }, 1000);
+
+    try {
+      const response = await fetch(downloadUrl);
+      if (!response.ok) throw new Error('Download failed');
+
+      // Extract filename from Content-Disposition header
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let fileName = 'download.mp4';
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="?([^";\n]+)"?/);
+        if (match) fileName = match[1];
+      }
+
+      const blob = await response.blob();
+      const blobUrl = URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = fileName;  // This attribute forces download, never opens in browser
+      a.style.display = 'none';
+      document.body.appendChild(a);
+      a.click();
+
+      // Cleanup
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(blobUrl);
+      }, 5000);
+    } catch (err) {
+      console.error('File download failed:', err);
+      // Fallback: direct navigation (works when Content-Disposition: attachment is set)
+      window.location.href = downloadUrl;
+    }
+  };
+
+  // Manual save function the user can trigger via a button click
+  const saveFile = () => {
+    if (!activeJobId) return;
+    performFileDownload(activeJobId);
   };
 
   const handleTerminalState = (jobId: string, currentStatus: JobStatus, errorMsg?: string | null) => {
@@ -170,5 +206,6 @@ export function useJobProgress() {
     startDownload,
     cancel,
     reset,
+    saveFile,
   };
 }
