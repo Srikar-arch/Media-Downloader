@@ -19,6 +19,32 @@ function getFfmpegPath(): string | null {
   return null;
 }
 
+function getCookieFilePath(): string | null {
+  if (process.env.COOKIES_FILE && fs.existsSync(process.env.COOKIES_FILE)) {
+    return process.env.COOKIES_FILE;
+  }
+  const localCookie = path.resolve(import.meta.dirname, '../../data/cookies.txt');
+  if (fs.existsSync(localCookie)) {
+    return localCookie;
+  }
+  if (process.env.YOUTUBE_COOKIES) {
+    try {
+      const targetPath = path.resolve(import.meta.dirname, '../../data/cookies.txt');
+      const dir = path.dirname(targetPath);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      let content = process.env.YOUTUBE_COOKIES;
+      if (content.startsWith('base64:')) {
+        content = Buffer.from(content.replace('base64:', ''), 'base64').toString('utf-8');
+      }
+      fs.writeFileSync(targetPath, content, 'utf-8');
+      return targetPath;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export interface YtDlpExtractionResult {
   metadata: MediaMetadata;
   formats: MediaFormat[];
@@ -41,8 +67,16 @@ export async function extractMediaWithYtDlp(url: string): Promise<YtDlpExtractio
       '--js-runtimes', 'node',
       '--user-agent',
       'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-      url,
     ];
+
+    const cookiePath = getCookieFilePath();
+    if (cookiePath) {
+      args.push('--cookies', cookiePath);
+    } else {
+      args.push('--extractor-args', 'youtube:player_client=android,ios,mweb,web_safari');
+    }
+
+    args.push(url);
 
     const bin = getBinPath();
     const proc = spawn(bin, args);
@@ -242,6 +276,13 @@ export async function downloadWithYtDlp(
     '--postprocessor-args',
     'ffmpeg:-nostdin -y',
   ];
+
+  const cookiePath = getCookieFilePath();
+  if (cookiePath) {
+    args.push('--cookies', cookiePath);
+  } else {
+    args.push('--extractor-args', 'youtube:player_client=android,ios,mweb,web_safari');
+  }
 
   const ffmpegLoc = getFfmpegPath();
   if (ffmpegLoc) {
