@@ -233,17 +233,14 @@ export async function downloadWithYtDlp(
     '--no-playlist',
     '--no-warnings',
     '--no-check-certificates',
-    '--no-interactive',
     '--force-overwrites',
     '--no-cache-dir',
     '--socket-timeout', '30',
     '--js-runtimes', 'node',
     '--user-agent',
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-    '--extractor-args',
-    'youtube:player_client=android,ios,web',
     '--postprocessor-args',
-    'ffmpeg:-y',
+    'ffmpeg:-nostdin -y',
   ];
 
   const ffmpegLoc = getFfmpegPath();
