@@ -81,7 +81,7 @@ function getCommonArgs(): string[] {
   if (cookiePath) {
     args.push('--cookies', cookiePath);
   } else {
-    args.push('--extractor-args', 'youtube:player_client=android,web');
+    args.push('--extractor-args', 'youtube:player_client=ios,android,mweb,web_safari');
   }
 
   return args;
@@ -318,13 +318,13 @@ export async function downloadWithYtDlp(
   if (isAudio) {
     if (formatId === 'audio-m4a') {
       args.push(
-        '-f', 'bestaudio[ext=m4a]/bestaudio/best',
+        '-f', 'bestaudio[ext=m4a]/bestaudio/best[height<=720]/best',
         '-x',
         '--audio-format', 'm4a'
       );
     } else {
       args.push(
-        '-f', 'bestaudio/best',
+        '-f', 'bestaudio/best[height<=720]/best',
         '-x',
         '--audio-format', 'mp3',
         '--audio-quality', '0'
